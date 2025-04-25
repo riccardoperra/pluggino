@@ -1,4 +1,9 @@
-import { $PLUGIN, type Context, type Plugin, type PluginMeta } from "./plugin";
+import {
+  $PLUGIN,
+  type Context,
+  type Plugin,
+  type PluginMeta,
+} from "./plugin.js";
 
 type CreatePluginOptions = {
   name: string;

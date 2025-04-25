@@ -1,45 +1,17 @@
-import { $PLUGIN, type Composable, Context, Plugin } from "./plugin";
-import { emitter, type Emitter } from "./emitter";
+import { $PLUGIN, type Context, type Plugin } from "./plugin.js";
+import { emitter, type Emitter } from "./emitter.js";
+import type { Composable } from "./composer.js";
 
 export interface ResolveOptions {
   reservedProperties?: string[];
 }
 
-const DESTROY_EVENT = Symbol("plugin.destroy"),
-  INIT_EVENT = Symbol("plugin.init");
+const DESTROY_EVENT: unique symbol = Symbol("plugin.destroy");
+const INIT_EVENT: unique symbol = Symbol("plugin.init");
 
-export function resolve<T extends Composable<any>>(
-  o: {},
-  plugins: ReadonlyArray<Plugin>,
-  options: ResolveOptions,
-) {
-  const reservedProperties = options?.reservedProperties ?? [];
-
-  const context: ResolvePluginContext<T> = {
-    object: o as T,
-    emitter: emitter(),
-    skipSet(property: string): boolean {
-      if (reservedProperties.length > 0) {
-        return reservedProperties.includes(property);
-      }
-      return false;
-    },
-  };
-
-  const cleanup = () => {
-    context.emitter.emit(DESTROY_EVENT);
-  };
-
-  for (let i = 0; i < plugins.length; i++) {
-    resolvePlugin.call(context, plugins[i]);
-  }
-
-  context.emitter.emit(INIT_EVENT);
-
-  return {
-    object: context.object,
-    cleanup,
-  };
+export interface ComposedObject<T> {
+  object: T;
+  dispose: () => void;
 }
 
 export interface ResolvePluginContext<T extends {}> {
@@ -53,16 +25,51 @@ export interface ResolvePluginContext<T extends {}> {
   skipSet(property: string): boolean;
 }
 
+export function resolve<T extends {}>(
+  composable: Composable<T>,
+  o: any,
+  options: ResolveOptions,
+): ComposedObject<T> {
+  const plugins = composable.context.plugins;
+  const reservedProperties = options?.reservedProperties ?? [];
+
+  const context: ResolvePluginContext<T> = {
+    object: o as T,
+    emitter: emitter(),
+    skipSet(property: string): boolean {
+      if (reservedProperties.length > 0) {
+        return reservedProperties.includes(property);
+      }
+      return false;
+    },
+  };
+
+  const dispose = () => {
+    context.emitter.emit(DESTROY_EVENT);
+  };
+
+  for (let i = 0; i < plugins.length; i++) {
+    resolvePlugin.call(context, plugins[i]);
+  }
+
+  context.emitter.emit(INIT_EVENT);
+
+  return {
+    object: context.object as any,
+    dispose,
+  };
+}
+
 function resolvePlugin<T extends {}>(
   this: ResolvePluginContext<T>,
-  plugin: Plugin<Record<string, any>>,
-) {
-  const { emitter } = this,
-    meta = plugin[$PLUGIN],
-    context: Context = {
-      onMount: (cb) => emitter.on(INIT_EVENT, () => cb(), { once: true }),
-      onCleanup: (cb) => emitter.on(DESTROY_EVENT, () => cb(), { once: true }),
-    };
+  plugin: Plugin,
+): unknown {
+  const { emitter } = this;
+  const meta = plugin[$PLUGIN];
+  const context: Context = {
+    onMount: (cb) => emitter.on(INIT_EVENT, () => cb(), { once: true }),
+    onCleanup: (cb) => emitter.on(DESTROY_EVENT, () => cb(), { once: true }),
+  };
 
   if (meta.onBeforeMount) {
     meta.onBeforeMount.call(this);
