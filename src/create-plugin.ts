@@ -8,6 +8,9 @@ import {
 type CreatePluginOptions = {
   name: string;
   dependencies?: string[];
+  onBeforeMount?(): void;
+  onMount?(): void;
+  onDestroy?(): void;
 };
 
 /**
@@ -25,9 +28,9 @@ export function createPlugin<
   const meta: PluginMeta<any> = {
     name: options.name,
     dependencies: options.dependencies,
-    onBeforeMount() {
-      console.log("before mount");
-    },
+    onBeforeMount: options.onBeforeMount,
+    onMount: options.onMount,
+    onDestroy: options.onDestroy,
   };
 
   return Object.assign(composer, {
