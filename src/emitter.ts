@@ -26,26 +26,26 @@ export interface Unsubscribe {
   (): void;
 }
 
-export interface Emitter<Events extends EventsMap = DefaultEvents> {
-  emit<K extends keyof Events>(
+export interface Emitter<TEvents extends EventsMap = DefaultEvents> {
+  emit: <TKeys extends keyof TEvents>(
     this: this,
-    event: K,
-    ...args: Parameters<Events[K]>
-  ): void;
+    event: TKeys,
+    ...args: Parameters<TEvents[TKeys]>
+  ) => void;
 
-  events: Partial<{ [E in keyof Events]: Events[E][] }>;
+  events: Partial<{ [E in keyof TEvents]: Array<TEvents[E]> }>;
 
-  on<K extends keyof Events>(
+  on: <TKeys extends keyof TEvents>(
     this: this,
-    event: K,
-    cb: Events[K],
+    event: TKeys,
+    cb: TEvents[TKeys],
     options?: { once: boolean },
-  ): Unsubscribe;
+  ) => Unsubscribe;
 }
 
 export function emitter<
-  Events extends EventsMap = DefaultEvents,
->(): Emitter<Events> {
+  TEvents extends EventsMap = DefaultEvents,
+>(): Emitter<TEvents> {
   return {
     emit(event, ...args) {
       const callbacks = this.events[event] || [];
@@ -57,7 +57,7 @@ export function emitter<
     on(event, _cb, options) {
       const cb = !options?.once
         ? _cb
-        : (((...args: any[]) => {
+        : (((...args: Array<any>) => {
             _cb(...args);
             cleanup();
           }) as typeof _cb);

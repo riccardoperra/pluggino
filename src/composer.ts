@@ -14,29 +14,36 @@
  * limitations under the License.
  */
 
-import { $PLUGIN, type Context, isPlugin, type Plugin } from "./plugin.js";
+import { isPlugin } from "./plugin.js";
 import { createPlugin } from "./create-plugin.js";
+import type { $PLUGIN, Context, Plugin } from "./plugin.js";
 
-export class Composer<O extends {}> implements Composable<O> {
+export class Composer<TObject extends {}> implements Composable<TObject> {
   readonly context: ComposerContext = {
     plugins: [],
   };
 
   with<T extends {} | void>(
-    composerFn: (o: O, context: Context) => Exclude<T, typeof $PLUGIN> | void,
-  ): void extends T ? this : Composer<O & T> {
+    composerFn: (
+      o: TObject,
+      context: Context,
+    ) => Exclude<T, typeof $PLUGIN> | void,
+  ): void extends T ? this : Composer<TObject & T> {
     const plugin = composePlugin(composerFn);
     registerPlugin.call(this.context, plugin);
-    return this as void extends T ? this : Composer<O & T>;
+    return this as void extends T ? this : Composer<TObject & T>;
   }
 }
 
-export interface Composable<O extends {}> {
+export interface Composable<TObject extends {}> {
   context: ComposerContext;
 
-  with<T extends {} | void>(
-    composerFn: (o: O, context: Context) => Exclude<T, typeof $PLUGIN> | void,
-  ): void extends T ? this : Composable<O & T>;
+  with: <T extends {} | void>(
+    composerFn: (
+      o: TObject,
+      context: Context,
+    ) => Exclude<T, typeof $PLUGIN> | void,
+  ) => void extends T ? this : Composable<TObject & T>;
 }
 
 export function composePlugin(

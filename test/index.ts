@@ -18,16 +18,16 @@ import { Composer, createPlugin, resolve } from "../src/index.js";
 
 const composer = new Composer();
 
-export interface Result<S> {
-  resultFromMyPlugin: S;
+export interface Result<T> {
+  resultFromMyPlugin: T;
   fromLastPlugin: {};
 }
 
-const myPlugin = <S>() =>
+const myPlugin = <T>() =>
   createPlugin(
-    (_, context): Result<S> => {
+    (_, context): Result<T> => {
       return {
-        resultFromMyPlugin: 1 as S,
+        resultFromMyPlugin: 1 as T,
         fromLastPlugin: {},
       };
     },

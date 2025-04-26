@@ -1,3 +1,6 @@
-export default {
-    printWidth: 80
-}
+/** @type {import("prettier").Config} */
+const config = {
+  printWidth: 80,
+};
+
+export default config;

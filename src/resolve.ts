@@ -14,15 +14,17 @@
  * limitations under the License.
  */
 
-import { $PLUGIN, type Context, type Plugin } from "./plugin.js";
-import { emitter, type Emitter } from "./emitter.js";
+import { $PLUGIN } from "./plugin.js";
+import { emitter } from "./emitter.js";
+import type { Context, Plugin } from "./plugin.js";
+import type { Emitter } from "./emitter.js";
 import type { Composable } from "./composer.js";
 
 export interface ResolveOptions {
-  reservedProperties?: string[];
+  reservedProperties?: Array<string>;
 }
 
-const DESTROY_EVENT: unique symbol = Symbol("plugin.destroy")
+const DESTROY_EVENT: unique symbol = Symbol("plugin.destroy");
 const INIT_EVENT: unique symbol = Symbol("plugin.init");
 
 export interface ComposedObject<T> {
@@ -38,7 +40,7 @@ export interface ResolvePluginContext<T extends {}> {
 
   object: T;
 
-  skipSet(property: string): boolean;
+  skipSet: (property: string) => boolean;
 }
 
 export function resolve<T extends {}>(
@@ -47,7 +49,7 @@ export function resolve<T extends {}>(
   options: ResolveOptions,
 ): ComposedObject<T> {
   const plugins = composable.context.plugins;
-  const reservedProperties = options?.reservedProperties ?? [];
+  const reservedProperties = options.reservedProperties ?? [];
 
   const context: ResolvePluginContext<T> = {
     object: o as T,
@@ -64,8 +66,8 @@ export function resolve<T extends {}>(
     context.emitter.emit(DESTROY_EVENT);
   };
 
-  for (let i = 0; i < plugins.length; i++) {
-    resolvePlugin.call(context, plugins[i]);
+  for (const item of plugins) {
+    resolvePlugin.call(context, item);
   }
 
   context.emitter.emit(INIT_EVENT);
@@ -80,11 +82,11 @@ function resolvePlugin<T extends {}>(
   this: ResolvePluginContext<T>,
   plugin: Plugin,
 ): unknown {
-  const { emitter } = this,
-    meta = plugin[$PLUGIN],
+  const meta = plugin[$PLUGIN],
     context: Context = {
-      onMount: (cb) => emitter.on(INIT_EVENT, () => cb(), { once: true }),
-      onCleanup: (cb) => emitter.on(DESTROY_EVENT, () => cb(), { once: true }),
+      onMount: (cb) => this.emitter.on(INIT_EVENT, () => cb(), { once: true }),
+      onCleanup: (cb) =>
+        this.emitter.on(DESTROY_EVENT, () => cb(), { once: true }),
     };
 
   if (meta.onBeforeMount) {

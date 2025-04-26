@@ -25,25 +25,21 @@ export function isPlugin(o: {}): o is Plugin {
 
 export interface CorePluginMeta<T> {
   name: string;
-
-  dependencies?: string[];
-
-  onBeforeMount?(): void;
-
-  onMount?(): void;
-
-  onDestroy?(): void;
+  dependencies?: Array<string>;
+  onBeforeMount?: () => void;
+  onMount?: () => void;
+  onDestroy?: () => void;
 }
 
 export type PluginMeta<TMeta extends {}> = CorePluginMeta<unknown> & TMeta;
 
 export type Plugin<
-  Callback extends (o: any, context: any) => any = (
+  TCallback extends (o: any, context: any) => any = (
     o: any,
     context: any,
   ) => any,
-  T = ReturnType<Callback>,
-> = Callback & {
+  T = ReturnType<TCallback>,
+> = TCallback & {
   [$PLUGIN]: PluginMeta<T & {}>;
 };
 

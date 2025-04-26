@@ -14,19 +14,15 @@
  * limitations under the License.
  */
 
-import {
-  $PLUGIN,
-  type Context,
-  type Plugin,
-  type PluginMeta,
-} from "./plugin.js";
+import { $PLUGIN } from "./plugin.js";
+import type { Context, Plugin, PluginMeta } from "./plugin.js";
 
 type CreatePluginOptions = {
   name: string;
-  dependencies?: string[];
-  onBeforeMount?(): void;
-  onMount?(): void;
-  onDestroy?(): void;
+  dependencies?: ReadonlyArray<string>;
+  onBeforeMount?: () => void;
+  onMount?: () => void;
+  onDestroy?: () => void;
 };
 
 /**
@@ -39,7 +35,7 @@ type CreatePluginOptions = {
  * @returns A plugin object with the given name and dependencies and the apply function provided.
  */
 export function createPlugin<
-  TCallback extends <O>(o: O, context: Context<O>) => unknown,
+  TCallback extends <TObject>(o: TObject, context: Context<TObject>) => unknown,
 >(composer: TCallback, options: CreatePluginOptions): Plugin<TCallback> {
   const meta: PluginMeta<any> = {
     name: options.name,

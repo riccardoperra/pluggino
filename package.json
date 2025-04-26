@@ -13,17 +13,25 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "lint": "eslint .",
+    "format": "prettier --write .",
     "build": "tsdown"
   },
   "keywords": [],
   "author": "",
   "license": "Apache-2.0",
   "devDependencies": {
-    "@tanstack/eslint-config": "^0.1.0",
+    "@eslint/js": "^9.25.1",
+    "@tanstack/config": "^0.18.0",
     "eslint": "^9.25.1",
     "eslint-plugin-unused-imports": "^4.1.4",
     "prettier": "^3.5.3",
     "tsdown": "^0.9.8",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.31.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "typescript": "^5.8.3"
+    }
   }
 }
