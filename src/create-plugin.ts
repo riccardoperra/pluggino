@@ -15,9 +15,12 @@
  */
 
 import { $PLUGIN } from "./plugin.js";
-import type { Context, Plugin, PluginMeta } from "./plugin.js";
+import { $PLUGIN_KEY, makePluginKey } from "./plugin-key.js";
+import type { Plugin, PluginContext, PluginMeta } from "./plugin.js";
+import type { PluginKey } from "./plugin-key.js";
 
 type CreatePluginOptions = {
+  key?: PluginKey<any, any>;
   name: string;
   dependencies?: ReadonlyArray<string>;
   onBeforeMount?: () => void;
@@ -35,7 +38,10 @@ type CreatePluginOptions = {
  * @returns A plugin object with the given name and dependencies and the apply function provided.
  */
 export function createPlugin<
-  TCallback extends <TObject>(o: TObject, context: Context<TObject>) => unknown,
+  TCallback extends <TObject>(
+    o: TObject,
+    context: PluginContext<TObject>,
+  ) => unknown,
 >(composer: TCallback, options: CreatePluginOptions): Plugin<TCallback> {
   const meta: PluginMeta<any> = {
     name: options.name,
@@ -47,5 +53,6 @@ export function createPlugin<
 
   return Object.assign(composer, {
     [$PLUGIN]: meta,
+    [$PLUGIN_KEY]: options.key || makePluginKey(),
   });
 }

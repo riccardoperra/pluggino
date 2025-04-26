@@ -16,7 +16,7 @@
 
 import { isPlugin } from "./plugin.js";
 import { createPlugin } from "./create-plugin.js";
-import type { $PLUGIN, Context, Plugin } from "./plugin.js";
+import type { $PLUGIN, Plugin, PluginContext } from "./plugin.js";
 
 export class Composer<TObject extends {}> implements Composable<TObject> {
   readonly context: ComposerContext = {
@@ -26,7 +26,7 @@ export class Composer<TObject extends {}> implements Composable<TObject> {
   with<T extends {} | void>(
     composerFn: (
       o: TObject,
-      context: Context,
+      context: PluginContext,
     ) => Exclude<T, typeof $PLUGIN> | void,
   ): void extends T ? this : Composer<TObject & T> {
     const plugin = composePlugin(composerFn);
@@ -41,13 +41,13 @@ export interface Composable<TObject extends {}> {
   with: <T extends {} | void>(
     composerFn: (
       o: TObject,
-      context: Context,
+      context: PluginContext,
     ) => Exclude<T, typeof $PLUGIN> | void,
   ) => void extends T ? this : Composable<TObject & T>;
 }
 
 export function composePlugin(
-  composerFn: ((o: any, context: Context) => any) | Plugin,
+  composerFn: ((o: any, context: PluginContext) => any) | Plugin,
 ): Plugin {
   if (isPlugin(composerFn)) {
     return composerFn;
@@ -55,6 +55,7 @@ export function composePlugin(
 
   const name =
     composerFn.name || `plugin-${Math.random().toString(16).slice(2)}`;
+
   return createPlugin(composerFn, {
     name,
     dependencies: [],

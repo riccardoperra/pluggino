@@ -2,7 +2,9 @@ import { defineConfig } from "tsdown";
 
 export default defineConfig({
   clean: true,
-  minify: true,
+  minify: false,
+  sourcemap: true,
+  fixedExtension: true,
   entry: ["./src/index.ts"],
-  dts: { isolatedDeclarations: true },
+  dts: true,
 });

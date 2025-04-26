@@ -16,7 +16,11 @@
 
 import { $PLUGIN } from "./plugin.js";
 import { emitter } from "./emitter.js";
-import type { Context, Plugin } from "./plugin.js";
+import { $PLUGIN_KEY } from "./plugin-key.js";
+import { getMeta, setMeta } from "./meta.js";
+import type { MetaStore, WithMeta } from "./meta.js";
+import type { PluginKey } from "./plugin-key.js";
+import type { Plugin, PluginContext } from "./plugin.js";
 import type { Emitter } from "./emitter.js";
 import type { Composable } from "./composer.js";
 
@@ -32,7 +36,7 @@ export interface ComposedObject<T> {
   dispose: () => void;
 }
 
-export interface ResolvePluginContext<T extends {}> {
+export interface ResolvePluginContext<T extends {}> extends WithMeta {
   emitter: Emitter<{
     [INIT_EVENT]: () => void;
     [DESTROY_EVENT]: () => void;
@@ -41,6 +45,15 @@ export interface ResolvePluginContext<T extends {}> {
   object: T;
 
   skipSet: (property: string) => boolean;
+
+  refs: WeakMap<
+    PluginKey<any, any>,
+    {
+      plugin: Plugin;
+      result: object;
+      meta: Record<string, any>;
+    }
+  >;
 }
 
 export function resolve<T extends {}>(
@@ -51,23 +64,37 @@ export function resolve<T extends {}>(
   const plugins = composable.context.plugins;
   const reservedProperties = options.reservedProperties ?? [];
 
+  const metadata: MetaStore = {};
+
+  const refs = new WeakMap<
+    PluginKey<any, any>,
+    {
+      plugin: Plugin;
+      result: object;
+      meta: Record<string, any>;
+    }
+  >();
+
   const context: ResolvePluginContext<T> = {
     object: o as T,
     emitter: emitter(),
-    skipSet(property: string): boolean {
+    getMeta: getMeta.bind(metadata),
+    setMeta: setMeta.bind(metadata),
+    skipSet: (property: string): boolean => {
       if (reservedProperties.length > 0) {
         return reservedProperties.includes(property);
       }
       return false;
     },
+    refs,
   };
 
   const dispose = () => {
     context.emitter.emit(DESTROY_EVENT);
   };
 
-  for (const item of plugins) {
-    resolvePlugin.call(context, item);
+  for (const plugin of plugins) {
+    resolvePlugin.call(context, plugin);
   }
 
   context.emitter.emit(INIT_EVENT);
@@ -81,13 +108,27 @@ export function resolve<T extends {}>(
 function resolvePlugin<T extends {}>(
   this: ResolvePluginContext<T>,
   plugin: Plugin,
-): unknown {
+) {
   const meta = plugin[$PLUGIN],
-    context: Context = {
-      onMount: (cb) => this.emitter.on(INIT_EVENT, () => cb(), { once: true }),
-      onCleanup: (cb) =>
-        this.emitter.on(DESTROY_EVENT, () => cb(), { once: true }),
-    };
+    pluginKey = plugin[$PLUGIN_KEY];
+
+  const context: PluginContext = {
+    onMount: (cb) => {
+      this.emitter.on(INIT_EVENT, () => cb(), { once: true });
+    },
+    onDispose: (cb) => {
+      this.emitter.on(DESTROY_EVENT, () => cb(), { once: true });
+    },
+    get: (p) => {
+      const ref = this.refs.get(p);
+      if (!ref) return null;
+      return ref.result as any;
+    },
+    getMeta: this.getMeta.bind(this.getMeta),
+    setMeta: this.setMeta.bind(this.setMeta),
+  };
+
+  const ownPluginMeta: Record<string, any> = {};
 
   if (meta.onBeforeMount) {
     meta.onBeforeMount.call(this);
@@ -102,7 +143,10 @@ function resolvePlugin<T extends {}>(
 
   if (o) {
     for (const property in o) {
-      if (this.skipSet(property)) continue;
+      if (this.skipSet(property)) {
+        delete o[property];
+        continue;
+      }
       const descriptor = Object.getOwnPropertyDescriptor(o, property);
       if (descriptor) {
         Object.defineProperty(this.object, property, descriptor);
@@ -114,8 +158,17 @@ function resolvePlugin<T extends {}>(
 
   if (meta.onDestroy) {
     const fn = meta.onDestroy;
-    context.onCleanup(fn);
+    context.onDispose(fn);
   }
 
-  return this.object;
+  this.refs.set(pluginKey, {
+    plugin,
+    result: o,
+    meta: ownPluginMeta,
+  });
+
+  return {
+    object: this.object,
+    callResult: o,
+  };
 }

@@ -15,7 +15,12 @@
  */
 
 import { test } from "vitest";
-import { Composer, createPlugin, resolve } from "../src/index.js";
+import {
+  Composer,
+  createPlugin,
+  makePluginKey,
+  resolve,
+} from "../src/index.js";
 
 const composer = new Composer();
 
@@ -23,6 +28,8 @@ export interface Result<T> {
   resultFromMyPlugin: T;
   fromLastPlugin: {};
 }
+
+const myPlugin1Key = makePluginKey<Result<number>, { test: number }>();
 
 const myPlugin = <T>() =>
   createPlugin(
@@ -35,34 +42,34 @@ const myPlugin = <T>() =>
     {
       name: "myPlugin",
       dependencies: [],
+      key: myPlugin1Key,
     },
   );
 
-const composable = composer
-  .with(myPlugin<number>())
-  .with((_) => {
-    return {
-      fromLastPlugin: _.resultFromMyPlugin,
-      current: 1,
-    };
-  })
-  .with((x) => {
-    x.current = 8;
-    return {
-      fromLastPlugin2: x.resultFromMyPlugin,
-      fromLastPlugin: "",
-      current: "",
-    };
-  });
-
-const resolved = resolve(
-  composable,
-  {},
-  {
-    reservedProperties: [],
-  },
-);
-
 test("foo test", () => {
-  console.log("pass");
+  const composable = composer
+    .with(myPlugin<number>())
+    .with((_, context) => {
+      context.setMeta("foo", "bar");
+
+      return {
+        fromLastPlugin: _.resultFromMyPlugin,
+        current: 1,
+      };
+    })
+    .with((x, context) => {
+      return {
+        fromLastPlugin2: x.resultFromMyPlugin,
+        fromLastPlugin: "",
+        current: "",
+      };
+    });
+
+  const resolved = resolve(
+    composable,
+    {},
+    {
+      reservedProperties: [],
+    },
+  );
 });

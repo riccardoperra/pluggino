@@ -14,8 +14,15 @@
  * limitations under the License.
  */
 
-export * from "./plugin.js";
-export * from "./create-plugin.js";
-export * from "./composer.js";
-export * from "./resolve.js";
-export * from "./plugin-key.js";
+declare const tag: unique symbol;
+
+export interface TokenContainer<T> {
+  readonly [tag]: T;
+}
+
+type WithToken<TToken extends PropertyKey, TMetadata> = TokenContainer<{
+  [K in TToken]: TMetadata;
+}>;
+
+export type Token<T, TName extends PropertyKey, TMetadata = never> = T &
+  WithToken<TName, TMetadata>;

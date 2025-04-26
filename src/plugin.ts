@@ -14,10 +14,8 @@
  * limitations under the License.
  */
 
-export interface ContextHooks {
-  readonly onInit: (fn: () => void) => void;
-  readonly onDestroy: (fn: () => void) => void;
-}
+import type { $PLUGIN_KEY, PluginKey } from "./plugin-key.js";
+import type { WithMeta } from "./meta.js";
 
 export function isPlugin(o: {}): o is Plugin {
   return $PLUGIN in o;
@@ -28,7 +26,7 @@ export interface CorePluginMeta<T> {
   dependencies?: Array<string>;
   onBeforeMount?: () => void;
   onMount?: () => void;
-  onDestroy?: () => void;
+  onDispose?: () => void;
 }
 
 export type PluginMeta<TMeta extends {}> = CorePluginMeta<unknown> & TMeta;
@@ -41,11 +39,16 @@ export type Plugin<
   T = ReturnType<TCallback>,
 > = TCallback & {
   [$PLUGIN]: PluginMeta<T & {}>;
+  [$PLUGIN_KEY]: PluginKey<T, unknown>;
 };
 
 export const $PLUGIN: unique symbol = Symbol("plugin");
 
-export type Context<T = any> = {
-  onMount: ContextHooks["onInit"];
-  onCleanup: ContextHooks["onDestroy"];
-};
+export interface PluginContext<T = any> extends WithMeta {
+  onMount: (fn: () => void) => void;
+  onDispose: (fn: () => void) => void;
+
+  get: <TPluginKey>(
+    plugin: PluginKey<TPluginKey, unknown>,
+  ) => null | TPluginKey;
+}
