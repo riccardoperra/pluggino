@@ -24,19 +24,41 @@ import type { Plugin, PluginContext } from "./plugin.js";
 import type { Emitter } from "./emitter.js";
 import type { Composable } from "./composer.js";
 
-export interface ResolveOptions {
+export interface ResolveOptions<T> {
   reservedProperties?: Array<string>;
+  createContext?: () => Record<string, any>;
+  beforePluginMount?: InternalEvents<T>[typeof BEFORE_PLUGIN_MOUNT];
+  afterPluginMount?: InternalEvents<T>[typeof AFTER_PLUGIN_MOUNT];
 }
 
 const DESTROY_EVENT: unique symbol = Symbol("plugin.destroy");
 const INIT_EVENT: unique symbol = Symbol("plugin.init");
+const BEFORE_PLUGIN_MOUNT: unique symbol = Symbol("plugin.init");
+const AFTER_PLUGIN_MOUNT: unique symbol = Symbol("plugin.init");
 
 export interface ComposedObject<T> {
   object: T;
   dispose: () => void;
 }
 
-export interface ResolvePluginContext<T extends {}> extends WithMeta {
+export interface InternalEvents<T> {
+  [BEFORE_PLUGIN_MOUNT]: (
+    context: ResolvePluginContext<T>,
+    plugin: Plugin,
+    index: number,
+  ) => void;
+  [AFTER_PLUGIN_MOUNT]: (
+    context: ResolvePluginContext<T>,
+    data: {
+      plugin: Plugin;
+      result: unknown;
+      object: T;
+    },
+    index: number,
+  ) => void;
+}
+
+export interface ResolvePluginContext<T> extends WithMeta {
   emitter: Emitter<{
     [INIT_EVENT]: () => void;
     [DESTROY_EVENT]: () => void;
@@ -46,38 +68,34 @@ export interface ResolvePluginContext<T extends {}> extends WithMeta {
 
   skipSet: (property: string) => boolean;
 
-  refs: WeakMap<
-    PluginKey<any, any>,
-    {
-      plugin: Plugin;
-      result: object;
-      meta: Record<string, any>;
-    }
-  >;
+  refs: WeakMap<PluginKey<any, any>, { plugin: Plugin; result: object }>;
+
+  getContext: () => Record<string, any>;
+
+  meta: Record<string, unknown>;
+}
+
+export interface ResolvedPluginRef {
+  plugin: Plugin;
+  result: object;
+  meta: Record<string, any>;
 }
 
 export function resolve<T extends {}>(
   composable: Composable<T>,
   o: any,
-  options: ResolveOptions,
+  options: ResolveOptions<T>,
 ): ComposedObject<T> {
-  const plugins = composable.context.plugins;
-  const reservedProperties = options.reservedProperties ?? [];
-
-  const metadata: MetaStore = {};
-
-  const refs = new WeakMap<
-    PluginKey<any, any>,
-    {
-      plugin: Plugin;
-      result: object;
-      meta: Record<string, any>;
-    }
-  >();
+  const metadata: MetaStore = {},
+    plugins = composable.context.plugins,
+    reservedProperties = options.reservedProperties ?? [],
+    refs = new WeakMap<PluginKey<any, any>, ResolvedPluginRef>(),
+    createContext = options.createContext ?? (() => ({})),
+    e = emitter<InternalEvents<T>>();
 
   const context: ResolvePluginContext<T> = {
     object: o as T,
-    emitter: emitter(),
+    emitter: e as ResolvePluginContext<T>["emitter"],
     getMeta: getMeta.bind(metadata),
     setMeta: setMeta.bind(metadata),
     skipSet: (property: string): boolean => {
@@ -87,14 +105,31 @@ export function resolve<T extends {}>(
       return false;
     },
     refs,
+    meta: {},
+    getContext: createContext,
   };
 
-  const dispose = () => {
-    context.emitter.emit(DESTROY_EVENT);
-  };
+  if (options.beforePluginMount)
+    e.on(BEFORE_PLUGIN_MOUNT, options.beforePluginMount);
+  if (options.afterPluginMount)
+    e.on(AFTER_PLUGIN_MOUNT, options.afterPluginMount);
 
-  for (const plugin of plugins) {
-    resolvePlugin.call(context, plugin);
+  const dispose = () => context.emitter.emit(DESTROY_EVENT);
+
+  for (let i = 0; i < plugins.length; i++) {
+    const plugin = plugins[i];
+    e.emit(BEFORE_PLUGIN_MOUNT, context, plugin, i);
+    const { object, callResult } = resolvePlugin.call(context, plugin);
+    e.emit(
+      AFTER_PLUGIN_MOUNT,
+      context,
+      {
+        plugin,
+        result: callResult,
+        object: object as T,
+      },
+      i,
+    );
   }
 
   context.emitter.emit(INIT_EVENT);
@@ -113,22 +148,14 @@ function resolvePlugin<T extends {}>(
     pluginKey = plugin[$PLUGIN_KEY];
 
   const context: PluginContext = {
-    onMount: (cb) => {
-      this.emitter.on(INIT_EVENT, () => cb(), { once: true });
-    },
-    onDispose: (cb) => {
-      this.emitter.on(DESTROY_EVENT, () => cb(), { once: true });
-    },
-    get: (p) => {
-      const ref = this.refs.get(p);
-      if (!ref) return null;
-      return ref.result as any;
-    },
+    onMount: (cb) => this.emitter.on(INIT_EVENT, () => cb(), { once: true }),
+    onDispose: (cb) =>
+      this.emitter.on(DESTROY_EVENT, () => cb(), { once: true }),
+    get: (p) => (this.refs.get(p)?.result as any | null) ?? null,
     getMeta: this.getMeta,
     setMeta: this.setMeta,
+    ...this.getContext(),
   };
-
-  const ownPluginMeta: Record<string, any> = {};
 
   if (meta.onBeforeMount) {
     meta.onBeforeMount.call(this);
@@ -144,28 +171,21 @@ function resolvePlugin<T extends {}>(
     context.onDispose(fn);
   }
 
-  const result = plugin.call(context, this.object, context);
-
-  if (result) {
-    for (const property in result) {
-      if (this.skipSet(property)) continue;
-      const descriptor = Object.getOwnPropertyDescriptor(result, property);
-      if (descriptor) {
-        Object.defineProperty(this.object, property, descriptor);
-      } else {
-        Reflect.set(this.object, property, result[property]);
-      }
+  const r = plugin.call(context, this.object, context);
+  const result = { object: this.object, callResult: r };
+  if (!r) return result;
+  const keys = Object.keys(r);
+  // eslint-disable-next-line @typescript-eslint/prefer-for-of
+  for (let i = 0; i < keys.length; i++) {
+    const k = keys[i];
+    if (this.skipSet(k)) continue;
+    const descriptor = Object.getOwnPropertyDescriptor(r, k);
+    if (descriptor) {
+      Object.defineProperty(this.object, k, descriptor);
+    } else {
+      Reflect.set(this.object, k, r[k]);
     }
   }
-
-  this.refs.set(pluginKey, {
-    plugin,
-    result,
-    meta: ownPluginMeta,
-  });
-
-  return {
-    object: this.object,
-    callResult: result,
-  };
+  this.refs.set(pluginKey, { plugin, result: r });
+  return result;
 }

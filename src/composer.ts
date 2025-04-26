@@ -56,10 +56,7 @@ export function composePlugin(
   const name =
     composerFn.name || `plugin-${Math.random().toString(16).slice(2)}`;
 
-  return createPlugin(composerFn, {
-    name,
-    dependencies: [],
-  });
+  return createPlugin(composerFn, { name });
 }
 
 export interface ComposerContext {
