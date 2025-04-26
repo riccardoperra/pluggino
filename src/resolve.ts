@@ -1,3 +1,19 @@
+/*
+ * Copyright 2025 Riccardo Perra
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 import { $PLUGIN, type Context, type Plugin } from "./plugin.js";
 import { emitter, type Emitter } from "./emitter.js";
 import type { Composable } from "./composer.js";
@@ -6,7 +22,7 @@ export interface ResolveOptions {
   reservedProperties?: string[];
 }
 
-const DESTROY_EVENT: unique symbol = Symbol("plugin.destroy");
+const DESTROY_EVENT: unique symbol = Symbol("plugin.destroy")
 const INIT_EVENT: unique symbol = Symbol("plugin.init");
 
 export interface ComposedObject<T> {
@@ -64,12 +80,12 @@ function resolvePlugin<T extends {}>(
   this: ResolvePluginContext<T>,
   plugin: Plugin,
 ): unknown {
-  const { emitter } = this;
-  const meta = plugin[$PLUGIN];
-  const context: Context = {
-    onMount: (cb) => emitter.on(INIT_EVENT, () => cb(), { once: true }),
-    onCleanup: (cb) => emitter.on(DESTROY_EVENT, () => cb(), { once: true }),
-  };
+  const { emitter } = this,
+    meta = plugin[$PLUGIN],
+    context: Context = {
+      onMount: (cb) => emitter.on(INIT_EVENT, () => cb(), { once: true }),
+      onCleanup: (cb) => emitter.on(DESTROY_EVENT, () => cb(), { once: true }),
+    };
 
   if (meta.onBeforeMount) {
     meta.onBeforeMount.call(this);
