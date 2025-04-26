@@ -18,8 +18,9 @@ import { $PLUGIN } from "./plugin.js";
 import { $PLUGIN_KEY, makePluginKey } from "./plugin-key.js";
 import type { Plugin, PluginContext, PluginMeta } from "./plugin.js";
 import type { PluginKey } from "./plugin-key.js";
+import type { SystemFactoryTypes } from "./system.js";
 
-type CreatePluginOptions = {
+export type CreatePluginOptions = {
   key?: PluginKey<any, any>;
   name: string;
   onBeforeMount?: () => void;
@@ -27,7 +28,19 @@ type CreatePluginOptions = {
   onDestroy?: () => void;
 };
 
-export function createPlugin<
+export type CreatePluginFactory<
+  TSystemTypes extends SystemFactoryTypes = SystemFactoryTypes,
+> = <
+  TCallback extends <TObject>(
+    o: TObject,
+    context: PluginContext<TObject>,
+  ) => unknown,
+>(
+  callback: TCallback,
+  options: TSystemTypes["pluginOptions"],
+) => Plugin<TCallback>;
+
+export const createPlugin: CreatePluginFactory = function createPlugin<
   TCallback extends <TObject>(
     o: TObject,
     context: PluginContext<TObject>,
@@ -52,4 +65,10 @@ export function createPlugin<
   }
 
   return plugin;
+};
+
+export function createPluginFactory<
+  TOptions extends CreatePluginOptions,
+>(): CreatePluginFactory<TOptions> {
+  return createPlugin;
 }

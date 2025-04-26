@@ -19,3 +19,4 @@ export * from "./create-plugin.js";
 export * from "./composer.js";
 export * from "./resolve.js";
 export * from "./plugin-key.js";
+export * from "./system.js";

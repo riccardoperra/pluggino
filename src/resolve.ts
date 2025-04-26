@@ -23,12 +23,14 @@ import type { PluginKey } from "./plugin-key.js";
 import type { Plugin, PluginContext } from "./plugin.js";
 import type { Emitter } from "./emitter.js";
 import type { Composable } from "./composer.js";
+import type { CreatePluginOptions } from "./create-plugin.js";
+import type { SystemFactory, SystemFactoryTypes } from "./system.js";
 
-export interface ResolveOptions<T> {
+export interface ResolveOptions<T, TContext, TPlugin extends Plugin = Plugin> {
   reservedProperties?: Array<string>;
-  createContext?: () => Record<string, any>;
-  beforePluginMount?: InternalEvents<T>[typeof BEFORE_PLUGIN_MOUNT];
-  afterPluginMount?: InternalEvents<T>[typeof AFTER_PLUGIN_MOUNT];
+  createContext?: () => TContext;
+  beforePluginMount?: InternalEvents<T, TPlugin>[typeof BEFORE_PLUGIN_MOUNT];
+  afterPluginMount?: InternalEvents<T, TPlugin>[typeof AFTER_PLUGIN_MOUNT];
 }
 
 const DESTROY_EVENT: unique symbol = Symbol("plugin.destroy");
@@ -41,16 +43,16 @@ export interface ComposedObject<T> {
   dispose: () => void;
 }
 
-export interface InternalEvents<T> {
+export interface InternalEvents<T, TPlugin extends Plugin> {
   [BEFORE_PLUGIN_MOUNT]: (
     context: ResolvePluginContext<T>,
-    plugin: Plugin,
+    plugin: TPlugin,
     index: number,
   ) => void;
   [AFTER_PLUGIN_MOUNT]: (
     context: ResolvePluginContext<T>,
     data: {
-      plugin: Plugin;
+      plugin: TPlugin;
       result: unknown;
       object: T;
     },
@@ -81,17 +83,35 @@ export interface ResolvedPluginRef {
   meta: Record<string, any>;
 }
 
-export function resolve<T extends {}>(
+export type ResolvePluginFactory<
+  TSystemFactoryTypes extends SystemFactoryTypes = SystemFactoryTypes,
+> = <T extends {}>(
+  composable: TSystemFactoryTypes["composable"],
+  o: any,
+  options: ResolveOptions<
+    T,
+    TSystemFactoryTypes["resolveContext"],
+    TSystemFactoryTypes["plugin"]
+  >,
+) => ComposedObject<T>;
+
+export function resolveFactory<
+  T extends SystemFactoryTypes,
+>(): ResolvePluginFactory<T> {
+  return resolve;
+}
+
+export const resolve: ResolvePluginFactory = function resolve<T extends {}>(
   composable: Composable<T>,
   o: any,
-  options: ResolveOptions<T>,
+  options: ResolveOptions<T, SystemFactoryTypes>,
 ): ComposedObject<T> {
   const metadata: MetaStore = {},
     plugins = composable.context.plugins,
     reservedProperties = options.reservedProperties ?? [],
     refs = new WeakMap<PluginKey<any, any>, ResolvedPluginRef>(),
     createContext = options.createContext ?? (() => ({})),
-    e = emitter<InternalEvents<T>>();
+    e = emitter<InternalEvents<T, Plugin>>();
 
   const context: ResolvePluginContext<T> = {
     object: o as T,
@@ -138,7 +158,7 @@ export function resolve<T extends {}>(
     object: context.object,
     dispose,
   };
-}
+};
 
 function resolvePlugin<T extends {}>(
   this: ResolvePluginContext<T>,
@@ -166,8 +186,8 @@ function resolvePlugin<T extends {}>(
     context.onMount(fn);
   }
 
-  if (meta.onDestroy) {
-    const fn = meta.onDestroy;
+  if (meta.onDispose) {
+    const fn = meta.onDispose;
     context.onDispose(fn);
   }
 
