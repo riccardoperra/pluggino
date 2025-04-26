@@ -14,15 +14,21 @@
  * limitations under the License.
  */
 
-declare const tag: unique symbol;
+import { defineWorkspace } from "vitest/config";
 
-export interface TokenContainer<T> {
-  readonly [tag]: T;
-}
-
-type WithToken<TToken extends PropertyKey, TMetadata> = TokenContainer<{
-  [K in TToken]: TMetadata;
-}>;
-
-export type Token<T, TName extends PropertyKey, TMetadata = never> = T &
-  WithToken<TName, TMetadata>;
+export default defineWorkspace([
+  {
+    test: {
+      name: "core",
+    },
+  },
+  {
+    test: {
+      name: "types",
+      include: ["src/**/*.test-d.ts"],
+      typecheck: {
+        enabled: true,
+      },
+    },
+  },
+]);

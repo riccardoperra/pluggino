@@ -100,7 +100,7 @@ export function resolve<T extends {}>(
   context.emitter.emit(INIT_EVENT);
 
   return {
-    object: context.object as any,
+    object: context.object,
     dispose,
   };
 }
@@ -124,8 +124,8 @@ function resolvePlugin<T extends {}>(
       if (!ref) return null;
       return ref.result as any;
     },
-    getMeta: this.getMeta.bind(this.getMeta),
-    setMeta: this.setMeta.bind(this.setMeta),
+    getMeta: this.getMeta,
+    setMeta: this.setMeta,
   };
 
   const ownPluginMeta: Record<string, any> = {};
@@ -139,36 +139,33 @@ function resolvePlugin<T extends {}>(
     context.onMount(fn);
   }
 
-  const o = plugin.call(context, this.object, context);
-
-  if (o) {
-    for (const property in o) {
-      if (this.skipSet(property)) {
-        delete o[property];
-        continue;
-      }
-      const descriptor = Object.getOwnPropertyDescriptor(o, property);
-      if (descriptor) {
-        Object.defineProperty(this.object, property, descriptor);
-      } else {
-        Reflect.set(this.object, property, o[property]);
-      }
-    }
-  }
-
   if (meta.onDestroy) {
     const fn = meta.onDestroy;
     context.onDispose(fn);
   }
 
+  const result = plugin.call(context, this.object, context);
+
+  if (result) {
+    for (const property in result) {
+      if (this.skipSet(property)) continue;
+      const descriptor = Object.getOwnPropertyDescriptor(result, property);
+      if (descriptor) {
+        Object.defineProperty(this.object, property, descriptor);
+      } else {
+        Reflect.set(this.object, property, result[property]);
+      }
+    }
+  }
+
   this.refs.set(pluginKey, {
     plugin,
-    result: o,
+    result,
     meta: ownPluginMeta,
   });
 
   return {
     object: this.object,
-    callResult: o,
+    callResult: result,
   };
 }

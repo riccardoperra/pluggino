@@ -1,35 +1,39 @@
 import type { PluginContext } from "./plugin.js";
-import type { Token } from "./type.js";
 
 export const $PLUGIN_KEY: unique symbol = Symbol("plugin.key");
 export const $PLUGIN_META: unique symbol = Symbol("plugin.meta");
 
 export interface PluginKey<T, TMeta> {
   readonly ɵtype: T;
-  readonly [$PLUGIN_KEY]: symbol;
+  readonly ɵmeta: PluginKeyMeta<TMeta>;
+  readonly [$PLUGIN_KEY]: PluginKeyMeta<TMeta>;
 
   getMeta: (context: PluginContext) => TMeta;
 }
 
-export type PluginMeta<T> = Token<symbol, "ɵPluginMeta", T>;
+export type PluginKeyMeta<T> = symbol & {
+  readonly [$PLUGIN_META]: T;
+};
 
-export class ɵPluginKey<T, TMeta> implements PluginKey<T, TMeta> {
-  readonly [$PLUGIN_KEY]: symbol;
-  readonly ɵtype = undefined as T;
-
-  constructor(meta: symbol) {
-    this[$PLUGIN_KEY] = meta;
-  }
-
-  getMeta(context: PluginContext): TMeta {
-    return context.get(this) as TMeta;
-  }
+export function makePluginKey<T, TMeta>(
+  key: string = "key",
+): PluginKey<T, TMeta> {
+  return {
+    [$PLUGIN_KEY]: makePluginMeta<TMeta>(key),
+    ɵtype: undefined as T,
+    get ɵmeta() {
+      return this[$PLUGIN_KEY];
+    },
+    getMeta(context: PluginContext) {
+      return context.getMeta(this);
+    },
+  };
 }
 
-export function makePluginKey<T, TMeta>(): PluginKey<T, TMeta> {
-  return new ɵPluginKey(makePluginMeta());
-}
-
-export function makePluginMeta<TMeta>(): PluginMeta<TMeta> {
-  return Symbol("plugin.meta") as PluginMeta<TMeta>;
+export function makePluginMeta<TMeta>(
+  key: string = "key",
+): PluginKeyMeta<TMeta> {
+  return Object.assign(Symbol(`plugin.meta/${key}`), {
+    [$PLUGIN_META]: undefined as TMeta,
+  });
 }
