@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { test } from "vitest";
 import { Composer, createPlugin, resolve } from "../src/index.js";
 
 const composer = new Composer();
@@ -61,3 +62,7 @@ const resolved = resolve(
     reservedProperties: [],
   },
 );
+
+test("foo test", () => {
+  console.log("pass");
+});

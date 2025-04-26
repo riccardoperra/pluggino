@@ -11,7 +11,7 @@
     }
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "vitest --run",
     "lint": "eslint .",
     "format": "prettier --write .",
     "build": "tsdown"
@@ -28,7 +28,8 @@
     "prettier": "^3.5.3",
     "tsdown": "^0.9.8",
     "typescript": "^5.8.3",
-    "typescript-eslint": "^8.31.0"
+    "typescript-eslint": "^8.31.0",
+    "vitest": "^3.1.2"
   },
   "pnpm": {
     "overrides": {
