@@ -14,29 +14,28 @@
  * limitations under the License.
  */
 
-import { test } from "vitest";
 import {
   Composer,
   createPlugin,
   makePluginKey,
+  makePluginMeta,
   resolve,
 } from "../src/index.js";
 
 const composer = new Composer();
 
 export interface Result<T> {
-  resultFromMyPlugin: T;
-  fromLastPlugin: {};
+  resultFromMyFirstPlugin: T;
 }
 
 const myPlugin1Key = makePluginKey<Result<number>, { test: number }>();
+const meta2 = makePluginMeta<string>();
 
 const myPlugin = <T>() =>
   createPlugin(
-    (_, context): Result<T> => {
+    function plugin123(_, context): Result<T> {
       return {
-        resultFromMyPlugin: 1 as T,
-        fromLastPlugin: {},
+        resultFromMyFirstPlugin: 1 as T,
       };
     },
     {
@@ -46,30 +45,35 @@ const myPlugin = <T>() =>
     },
   );
 
-test("foo test", () => {
-  const composable = composer
-    .with(myPlugin<number>())
-    .with((_, context) => {
-      context.setMeta("foo", "bar");
+const composable = composer
+  .with(myPlugin<number>())
+  .with(function secondPlugin(_, context) {
+    context.setMeta("foo", "bar");
 
-      return {
-        fromLastPlugin: _.resultFromMyPlugin,
-        current: 1,
-      };
-    })
-    .with((x, context) => {
-      return {
-        fromLastPlugin2: x.resultFromMyPlugin,
-        fromLastPlugin: "",
-        current: "",
-      };
-    });
+    const data = {
+      fromLastPlugin: _.resultFromMyFirstPlugin,
+      current: 1,
+    };
+    return data;
+  })
+  .with(function test1(x, context) {
+    return {
+      fromLastPlugin2: 123,
+    };
+  });
 
-  const resolved = resolve(
-    composable,
-    {},
-    {
-      reservedProperties: [],
-    },
-  );
+const fnx = function fn() {
+  console.log("test");
+  return 3;
+};
+const objec = Object.assign(fnx, {
+  set(): void {
+    console.log("testing");
+  },
 });
+
+const resolved = resolve(composable, objec, {
+  reservedProperties: [],
+});
+
+console.dir(resolved.object);

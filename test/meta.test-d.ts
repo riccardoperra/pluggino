@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { describe, test, expectTypeOf } from "vitest";
+import { describe, expectTypeOf, test } from "vitest";
 import { getMeta, setMeta } from "../src/meta.js";
 import { makePluginKey, makePluginMeta } from "../src/index.js";
 
