@@ -5,6 +5,7 @@
     "pluggino": "0.0.0"
   },
   "changesets": [
-    "curly-hotels-jump"
+    "curly-hotels-jump",
+    "heavy-icons-speak"
   ]
 }
