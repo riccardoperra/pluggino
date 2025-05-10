@@ -1,6 +1,6 @@
 {
-  "name": "tsplug",
-  "version": "1.0.0",
+  "name": "pluggino",
+  "version": "0.0.0",
   "description": "",
   "type": "module",
   "main": "index.js",

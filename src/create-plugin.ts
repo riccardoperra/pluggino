@@ -31,20 +31,14 @@ export type CreatePluginOptions = {
 export type CreatePluginFactory<
   TSystemTypes extends SystemFactoryTypes = SystemFactoryTypes,
 > = <
-  TCallback extends <TObject>(
-    o: TObject,
-    context: PluginContext<TObject>,
-  ) => unknown,
+  TCallback extends <TObject>(o: TObject, context: PluginContext) => unknown,
 >(
   callback: TCallback,
   options: TSystemTypes["pluginOptions"],
 ) => Plugin<TCallback>;
 
 export const createPlugin: CreatePluginFactory = function createPlugin<
-  TCallback extends <TObject>(
-    o: TObject,
-    context: PluginContext<TObject>,
-  ) => unknown,
+  TCallback extends <TObject>(o: TObject, context: PluginContext) => unknown,
 >(composer: TCallback, options: CreatePluginOptions): Plugin<TCallback> {
   const meta: PluginMeta<any> = {
     // Allow any type of given options to be passed
@@ -66,9 +60,3 @@ export const createPlugin: CreatePluginFactory = function createPlugin<
 
   return plugin;
 };
-
-export function createPluginFactory<
-  TOptions extends CreatePluginOptions,
->(): CreatePluginFactory<TOptions> {
-  return createPlugin;
-}

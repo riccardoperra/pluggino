@@ -40,7 +40,6 @@ const myPlugin = <T>() =>
     },
     {
       name: "myPlugin",
-      dependencies: [],
       key: myPlugin1Key,
     },
   );

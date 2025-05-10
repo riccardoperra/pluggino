@@ -22,9 +22,7 @@ import type { MetaStore, WithMeta } from "./meta.js";
 import type { PluginKey } from "./plugin-key.js";
 import type { Plugin, PluginContext } from "./plugin.js";
 import type { Emitter } from "./emitter.js";
-import type { Composable } from "./composer.js";
-import type { CreatePluginOptions } from "./create-plugin.js";
-import type { SystemFactory, SystemFactoryTypes } from "./system.js";
+import type { SystemFactoryTypes } from "./system.js";
 
 export interface ResolveOptions<T, TContext, TPlugin extends Plugin = Plugin> {
   reservedProperties?: Array<string>;
@@ -60,7 +58,10 @@ export interface InternalEvents<T, TPlugin extends Plugin> {
   ) => void;
 }
 
-export interface ResolvePluginContext<T> extends WithMeta {
+export interface ResolvePluginContext<
+  T,
+  TSystemFactoryTypes extends SystemFactoryTypes = SystemFactoryTypes,
+> extends WithMeta {
   emitter: Emitter<{
     [INIT_EVENT]: () => void;
     [DESTROY_EVENT]: () => void;
@@ -70,7 +71,13 @@ export interface ResolvePluginContext<T> extends WithMeta {
 
   skipSet: (property: string) => boolean;
 
-  refs: WeakMap<PluginKey<any, any>, { plugin: Plugin; result: object }>;
+  refs: WeakMap<
+    PluginKey<any, any>,
+    {
+      plugin: TSystemFactoryTypes["plugin"];
+      result: object;
+    }
+  >;
 
   getContext: () => Record<string, any>;
 
@@ -83,7 +90,7 @@ export interface ResolvedPluginRef {
   meta: Record<string, any>;
 }
 
-export type ResolvePluginFactory<
+export type ResolvePluginHandler<
   TSystemFactoryTypes extends SystemFactoryTypes = SystemFactoryTypes,
 > = <T extends {}>(
   composable: TSystemFactoryTypes["composable"],
@@ -97,15 +104,19 @@ export type ResolvePluginFactory<
 
 export function resolveFactory<
   T extends SystemFactoryTypes,
->(): ResolvePluginFactory<T> {
-  return resolve;
+>(): ResolvePluginHandler<T> {
+  return resolve as unknown as ResolvePluginHandler<T>;
 }
 
-export const resolve: ResolvePluginFactory = function resolve<T extends {}>(
-  composable: Composable<T>,
+export const resolve: ResolvePluginHandler = function resolve<T extends {}>(
+  composable: SystemFactoryTypes["composable"],
   o: any,
-  options: ResolveOptions<T, SystemFactoryTypes>,
-): ComposedObject<T> {
+  options: ResolveOptions<
+    T,
+    SystemFactoryTypes["resolveContext"],
+    SystemFactoryTypes["plugin"]
+  >,
+) {
   const metadata: MetaStore = {},
     plugins = composable.context.plugins,
     reservedProperties = options.reservedProperties ?? [],
@@ -139,14 +150,14 @@ export const resolve: ResolvePluginFactory = function resolve<T extends {}>(
   for (let i = 0; i < plugins.length; i++) {
     const plugin = plugins[i];
     e.emit(BEFORE_PLUGIN_MOUNT, context, plugin, i);
-    const { object, callResult } = resolvePlugin.call(context, plugin);
+    const { object, callResult } = (resolvePlugin<T>).call(context, plugin);
     e.emit(
       AFTER_PLUGIN_MOUNT,
       context,
       {
         plugin,
         result: callResult,
-        object: object as T,
+        object,
       },
       i,
     );

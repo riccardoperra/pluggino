@@ -15,8 +15,8 @@
  */
 
 import { resolve } from "./resolve.js";
-import { createPluginFactory } from "./create-plugin.js";
-import type { ResolvePluginFactory } from "./resolve.js";
+import { createPlugin } from "./create-plugin.js";
+import type { ResolvePluginHandler } from "./resolve.js";
 import type {
   CreatePluginFactory,
   CreatePluginOptions,
@@ -38,12 +38,24 @@ export interface SystemFactoryTypes<
 
 export interface SystemFactory<T extends SystemFactoryTypes> {
   createPlugin: CreatePluginFactory<T>;
-  resolve: ResolvePluginFactory<T>;
+  resolve: ResolvePluginHandler<T>;
 }
 
 export function createSystem<T extends SystemFactoryTypes>(): SystemFactory<T> {
   return {
-    createPlugin: createPluginFactory<T["pluginOptions"]>(),
-    resolve: resolve,
+    createPlugin: createPluginFactory<T>(),
+    resolve: resolveFactory<T>(),
   } as unknown as SystemFactory<T>;
+}
+
+function createPluginFactory<
+  TSystemFactoryTypes extends SystemFactoryTypes,
+>(): CreatePluginFactory<TSystemFactoryTypes> {
+  return createPlugin;
+}
+
+function resolveFactory<
+  TSystemFactoryTypes extends SystemFactoryTypes,
+>(): ResolvePluginHandler<TSystemFactoryTypes> {
+  return resolve as unknown as ResolvePluginHandler<TSystemFactoryTypes>;
 }

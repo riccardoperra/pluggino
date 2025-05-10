@@ -44,7 +44,7 @@ export type Plugin<
 
 export const $PLUGIN: unique symbol = Symbol("plugin");
 
-export interface PluginContext<T = any> extends WithMeta {
+export interface PluginContext extends WithMeta {
   onMount: (fn: () => void) => void;
   onDispose: (fn: () => void) => void;
 
