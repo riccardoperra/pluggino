@@ -4,5 +4,7 @@
   "initialVersions": {
     "pluggino": "0.0.0"
   },
-  "changesets": []
+  "changesets": [
+    "curly-hotels-jump"
+  ]
 }
