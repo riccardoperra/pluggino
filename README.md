@@ -1,5 +1,10 @@
 # Pluggino
 
+> [!CAUTION]
+>
+> Experimental, not production ready.
+> Core system for [statebuilder](https://github.com/riccardoperra/statebuilder)
+
 Type-safe object enhancer with a composable plugin system.
 
 ## Features
